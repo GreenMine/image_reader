@@ -39,7 +39,7 @@ impl Image {
             } 
         }
 
-        return Err(Error::new(ErrorKind::Other, format!("Marker 0x{:02X} not found!", buffer[0])));
+        return Err(Error::new(ErrorKind::Other, format!("Marker 0x{:02X} not found!", buffer[1])));
     }
 }
 

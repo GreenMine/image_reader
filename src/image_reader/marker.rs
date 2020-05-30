@@ -7,10 +7,11 @@ use super::{
 };
 pub const LENGTH_OF_LENGTH_MARKER: usize = 2; //yyyeeeeee 
 
-pub const MARKERS: [Marker; 3] = [
+pub const MARKERS: [Marker; 4] = [
     Marker {kind: MarkerType::Start, has_length: false, func: Marker::start},
     Marker {kind: MarkerType::Comment, has_length: true, func: Marker::comment},
-    Marker {kind: MarkerType::DQT, has_length: true, func: Marker::dqt}
+    Marker {kind: MarkerType::DQT, has_length: true, func: Marker::dqt},
+    Marker {kind: MarkerType::SOF0, has_length: true, func: Marker::sof0}
 ];
 
 #[derive(Copy, Clone)]
@@ -25,6 +26,7 @@ pub enum MarkerType {
     Start   = 0xD8,
     Comment = 0xFE,
     DQT     = 0xDB,
+    SOF0    = 0xC0,
     _DHT,
 }
 
@@ -43,8 +45,7 @@ impl Marker {
     }
 
     fn dqt(img: &mut Image, length: usize) -> Result<()> {
-        let info = img.get_byte();
-        let (length_of_table, id_table) = binary_helper::get_byte_as_tuple(info);
+        let (length_of_table, id_table) = binary_helper::get_tuple_as_byte(img.get_byte());
         println!("Length: {}", length);
         println!("Length of table: {}byte.", if length_of_table == 0 {1} else {2});
         println!("Id of table: {}", id_table);
@@ -57,7 +58,37 @@ impl Marker {
             print!("{:02X} ", byte);
             if ((i+1) % 16) == 0  {println!()}
         }
-        println!();
+
+        Ok(())
+    }
+
+    fn sof0(img: &mut Image, _length: usize) -> Result<()> {
+        let precision = img.get_byte();
+        let mut buffer = vec![0u8; 2];
+        
+        img.file.read(&mut buffer)?;
+        let height = binary_helper::vec_as_number(&buffer);
+        
+        img.file.read(&mut buffer)?;
+        let width = binary_helper::vec_as_number(&buffer);
+
+        let channels_amount = img.get_byte();
+
+        println!("Precision: {}", precision);
+        println!("Image size: {}x{}", height, width);
+        println!("Channels amount: {}", channels_amount); 
+
+        for _ in 0..channels_amount {
+            let id = img.get_byte();
+            let (hor, ver) = binary_helper::get_tuple_as_byte(img.get_byte());
+            let q_table_id = img.get_byte();
+            println!("{}. H={}, V={}(q_id: {})", id, hor, ver, q_table_id);
+        }
+
+        Ok(())
+    }
+
+    fn _dht(_img: &mut Image, _length: usize) -> Result<()> {
 
         Ok(())
     }
